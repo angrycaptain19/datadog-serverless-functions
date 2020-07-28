@@ -658,18 +658,8 @@ def normalize_events(events, metadata):
     normalized = []
     for event in events:
         if isinstance(event, dict):
-            merged_event = merge_dicts(event, metadata)
-            if merged_event.get("dd.span_id"):
-                merged_event["dd.span_id"] = int(merged_event.get("dd.span_id"))
-            if merged_event.get("dd.trace_id"):
-                merged_event["dd.trace_id"] = int(merged_event.get("dd.trace_id"))
-            normalized.append(merged_event)
+            normalized.append(merge_dicts(event, metadata))
         elif isinstance(event, str):
-            merged_event = merge_dicts({"message": event}, metadata)
-            if merged_event.get("dd.span_id"):
-                merged_event["dd.span_id"] = int(merged_event.get("dd.span_id"))
-            if merged_event.get("dd.trace_id"):
-                merged_event["dd.trace_id"] = int(merged_event.get("dd.trace_id"))
             normalized.append(merge_dicts({"message": event}, metadata))
         else:
             # drop this log
@@ -742,12 +732,24 @@ def s3_handler(event, context, metadata):
 
         # Send lines to Datadog
         for line in split_data:
-            # Create structured object and send it
+            try:
+                line = process_line(line)
+            except Exception:
+                pass
             structured_line = {
                 "aws": {"s3": {"bucket": bucket, "key": key}},
                 "message": line,
             }
             yield structured_line
+
+
+def process_line(line):
+    line = json.loads(line)
+    log = json.loads(line["log"])
+    log['dd.span_id'] = int(log['dd.span_id'], 0)
+    log['dd.trace_id'] = int(log['dd.trace_id'], 0)
+    line["log"] = json.dumps(log)
+    return json.dumps(line)
 
 
 # Handle CloudWatch logs from Kinesis
