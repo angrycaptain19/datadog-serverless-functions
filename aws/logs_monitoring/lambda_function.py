@@ -658,8 +658,18 @@ def normalize_events(events, metadata):
     normalized = []
     for event in events:
         if isinstance(event, dict):
-            normalized.append(merge_dicts(event, metadata))
+            merged_event = merge_dicts(event, metadata)
+            if merged_event.get("dd.span_id"):
+                merged_event["dd.span_id"] = int(merged_event.get("dd.span_id"))
+            if merged_event.get("dd.trace_id"):
+                merged_event["dd.trace_id"] = int(merged_event.get("dd.trace_id"))
+            normalized.append(merged_event)
         elif isinstance(event, str):
+            merged_event = merge_dicts({"message": event}, metadata)
+            if merged_event.get("dd.span_id"):
+                merged_event["dd.span_id"] = int(merged_event.get("dd.span_id"))
+            if merged_event.get("dd.trace_id"):
+                merged_event["dd.trace_id"] = int(merged_event.get("dd.trace_id"))
             normalized.append(merge_dicts({"message": event}, metadata))
         else:
             # drop this log
