@@ -64,9 +64,8 @@ def compute_node_ip(events):
             ip_count[src_ip] += 1
             ip_count[dest_ip] += 1
     most_comm = ip_count.most_common()
-    if most_comm:
-        if most_comm[0][1] > 1:  # we have several events
-            return ip_count.most_common()[0][0]
+    if most_comm and most_comm[0][1] > 1:  # we have several events
+        return ip_count.most_common()[0][0]
     return 'unknown'
 
 
@@ -155,7 +154,6 @@ def protocol_id_to_name(protocol):
         81: "VMTP",
         82: "SECURE-VMTP",
         83: "VINES",
-        84: "TTP",
         84: "IPTM",
         85: "NSFNET-IGP",
         86: "DGP",
@@ -214,6 +212,7 @@ def protocol_id_to_name(protocol):
         141: "WESP",
         142: "ROHC",
     }
+
     return protocol_map.get(int(protocol), protocol)
 
 

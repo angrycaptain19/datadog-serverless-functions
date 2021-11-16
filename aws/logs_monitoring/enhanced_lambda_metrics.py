@@ -539,9 +539,7 @@ def get_enriched_lambda_log_tags(log_event):
     tags_from_arn = parse_lambda_tags_from_arn(log_function_arn)
     lambda_custom_tags = account_lambda_tags_cache.get(log_function_arn)
 
-    # Combine and dedup tags
-    tags = list(set(tags_from_arn + lambda_custom_tags))
-    return tags
+    return list(set(tags_from_arn + lambda_custom_tags))
 
 
 def create_timeout_enhanced_metric(log_line):

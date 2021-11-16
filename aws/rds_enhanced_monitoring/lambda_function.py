@@ -96,10 +96,12 @@ def _process_rds_enhanced_monitoring_message(ts, message, account, region):
         )
 
     for fs_stats in message.get("fileSys", []):
-        fs_tag = []
-        for tag_key in ["name", "mountPoint"]:
-            if tag_key in fs_stats:
-                fs_tag.append("%s:%s" % (tag_key, fs_stats.pop(tag_key)))
+        fs_tag = [
+            "%s:%s" % (tag_key, fs_stats.pop(tag_key))
+            for tag_key in ["name", "mountPoint"]
+            if tag_key in fs_stats
+        ]
+
         for key, value in fs_stats.items():
             stats.gauge(
                 'aws.rds.filesystem.%s' % key, value,
@@ -107,10 +109,12 @@ def _process_rds_enhanced_monitoring_message(ts, message, account, region):
             )
 
     for process_stats in message.get("processList", []):
-        process_tag = []
-        for tag_key in ["name", "id"]:
-            if tag_key in process_stats:
-                process_tag.append("%s:%s" % (tag_key, process_stats.pop(tag_key)))
+        process_tag = [
+            "%s:%s" % (tag_key, process_stats.pop(tag_key))
+            for tag_key in ["name", "id"]
+            if tag_key in process_stats
+        ]
+
         for key, value in process_stats.items():
             stats.gauge(
                 'aws.rds.process.%s' % key, value,
@@ -159,7 +163,7 @@ class Stats(object):
             'tags': tags,
         }
         if host:
-            base_dict.update({'host': host})
+            base_dict['host'] = host
         self.series.append(base_dict)
 
     def flush(self):

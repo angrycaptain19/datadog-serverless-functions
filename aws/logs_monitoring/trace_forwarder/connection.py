@@ -12,7 +12,7 @@ class GO_STRING(Structure):
 
 
 def make_go_string(str):
-    if not type(str) is bytes:
+    if type(str) is not bytes:
         str = str.encode("utf-8")
     return GO_STRING(str, len(str))
 

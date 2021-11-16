@@ -69,7 +69,7 @@ except ImportError:
     from botocore.vendored import requests
 
 # DD_API_KEY must be set
-if DD_API_KEY == "<YOUR_DATADOG_API_KEY>" or DD_API_KEY == "":
+if DD_API_KEY in ["<YOUR_DATADOG_API_KEY>", ""]:
     raise Exception("Missing Datadog API key")
 # Check if the API key is the correct number of characters
 if len(DD_API_KEY) != 32:
@@ -365,14 +365,9 @@ class ScrubbingRule(object):
 
 class DatadogScrubber(object):
     def __init__(self, configs):
-        rules = []
-        for config in configs:
-            if config.name in os.environ:
-                rules.append(
-                    ScrubbingRule(
+        rules = [ScrubbingRule(
                         compileRegex(config.name, config.pattern), config.placeholder
-                    )
-                )
+                    ) for config in configs if config.name in os.environ]
         self._rules = rules
 
     def scrub(self, payload):
@@ -555,7 +550,7 @@ def extract_trace_payload(event):
     try:
         message = event["message"]
         obj = json.loads(event["message"])
-        if not "traces" in obj or not isinstance(obj["traces"], list):
+        if "traces" not in obj or not isinstance(obj["traces"], list):
             return None
         return {"message": message, "tags": event[DD_CUSTOM_TAGS]}
     except Exception:
@@ -567,7 +562,7 @@ def extract_metric(event):
     try:
         metric = json.loads(event["message"])
         required_attrs = {"m", "v", "e", "t"}
-        if not all(attr in metric for attr in required_attrs):
+        if any(attr not in metric for attr in required_attrs):
             return None
         if not isinstance(metric["t"], list):
             return None
@@ -608,14 +603,12 @@ def filter_logs(logs):
     # Test each log for exclusion and inclusion, if the criteria exist
     for log in logs:
         try:
-            if EXCLUDE_AT_MATCH is not None:
-                # if an exclude match is found, do not add log to logs_to_send
-                if re.search(exclude_regex, log):
-                    continue
-            if INCLUDE_AT_MATCH is not None:
-                # if no include match is found, do not add log to logs_to_send
-                if not re.search(include_regex, log):
-                    continue
+            if EXCLUDE_AT_MATCH is not None and re.search(exclude_regex, log):
+                continue
+            if INCLUDE_AT_MATCH is not None and not re.search(
+                include_regex, log
+            ):
+                continue
             logs_to_send.append(log)
         except ScrubbingException:
             raise Exception("could not filter the payload")
@@ -843,10 +836,7 @@ def cwevent_handler(event, metadata):
     # Set the source on the log
     source = data.get("source", "cloudwatch")
     service = source.split(".")
-    if len(service) > 1:
-        metadata[DD_SOURCE] = service[1]
-    else:
-        metadata[DD_SOURCE] = "cloudwatch"
+    metadata[DD_SOURCE] = service[1] if len(service) > 1 else "cloudwatch"
     ##default service to source value
     metadata[DD_SERVICE] = metadata[DD_SOURCE]
 
@@ -872,9 +862,7 @@ def merge_dicts(a, b, path=None):
         if key in a:
             if isinstance(a[key], dict) and isinstance(b[key], dict):
                 merge_dicts(a[key], b[key], path + [str(key)])
-            elif a[key] == b[key]:
-                pass  # same leaf value
-            else:
+            elif a[key] != b[key]:
                 raise Exception(
                     "Conflict while merging metadatas and the log entry at %s"
                     % ".".join(path + [str(key)])
@@ -929,9 +917,12 @@ def parse_event_source(event, key):
     if "awslogs" in event:
         return "cloudwatch"
 
-    if "Records" in event and len(event["Records"]) > 0:
-        if "s3" in event["Records"][0]:
-            return "s3"
+    if (
+        "Records" in event
+        and len(event["Records"]) > 0
+        and "s3" in event["Records"][0]
+    ):
+        return "s3"
 
     return "aws"
 
@@ -961,10 +952,8 @@ def parse_service_arn(source, key, bucket, context):
                 return "arn:aws:elasticloadbalancing:{}:{}:loadbalancer/{}".format(
                     region, idvalue, elbname
                 )
-    if source == "s3":
-        # For S3 access logs we use the bucket name to rebuild the arn
-        if bucket:
-            return "arn:aws:s3:::{}".format(bucket)
+    if source == "s3" and bucket:
+        return "arn:aws:s3:::{}".format(bucket)
     if source == "cloudfront":
         # For Cloudfront logs we need to get the account and distribution id from the lambda arn and the filename
         # 1. We extract the cloudfront id  from the filename
