@@ -49,7 +49,6 @@ class TestForwarderSnapshots(unittest.TestCase):
         else:
             message = f"Snapshot's didn't match for {input_filename}. To update run `UPDATE_SNAPSHOTS=true ./tools/integration_test.sh"
             self.assertEqual(output_data, snapshot_data, message)
-            pass
 
     def setup(self):
         # Clears any recorded state from the mock server
